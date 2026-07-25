@@ -20,6 +20,7 @@ const DEFAULT_FILTERS = [
 ];
 
 const VALID_FILTER_TYPES = new Set(['peaking', 'lowshelf', 'highshelf']);
+const MAX_FILTERS = 32;
 const PRESETS_STORAGE_KEY = 'ears_presets_v1';
 const SESSION_STATE_KEY = 'ears_session_v1';
 
@@ -49,9 +50,60 @@ function sanitizeFilter(inputFilter, fallbackFilter) {
   };
 }
 
+// Position decides the shape of a band: the outer two shelve, the rest peak.
+function filterTypeForIndex(index, count) {
+  if (index === 0) {
+    return 'lowshelf';
+  }
+  if (index === count - 1) {
+    return 'highshelf';
+  }
+  return 'peaking';
+}
+
+function fallbackFilterFor(index, count) {
+  return (
+    DEFAULT_FILTERS[index] || {
+      type: filterTypeForIndex(index, count),
+      frequency: 1000,
+      q: 1,
+      gain: 0
+    }
+  );
+}
+
 function normalizePresetValue(rawPreset) {
   if (!rawPreset) {
     return null;
+  }
+
+  // Ears' own export format keeps each parameter in its own parallel array
+  // and carries no band types, so they are derived from position.
+  if (Array.isArray(rawPreset.frequencies)) {
+    const gains = Array.isArray(rawPreset.gains) ? rawPreset.gains : [];
+    const qs = Array.isArray(rawPreset.qs) ? rawPreset.qs : [];
+    const count = Math.min(rawPreset.frequencies.length, MAX_FILTERS);
+
+    if (!count) {
+      return null;
+    }
+
+    const eqFilters = [];
+    for (let index = 0; index < count; index += 1) {
+      eqFilters.push(
+        sanitizeFilter(
+          {
+            type: filterTypeForIndex(index, count),
+            frequency: rawPreset.frequencies[index],
+            gain: gains[index],
+            q: qs[index]
+          },
+          fallbackFilterFor(index, count)
+        )
+      );
+    }
+
+    return { eqFilters, gain: toFiniteNumber(rawPreset.gain, 1) };
   }
 
   const rawFilters = Array.isArray(rawPreset.eqFilters)
@@ -62,14 +114,19 @@ function normalizePresetValue(rawPreset) {
         ? rawPreset
         : null;
 
-  if (!rawFilters) {
+  if (!rawFilters || !rawFilters.length) {
     return null;
   }
 
-  const eqFilters = DEFAULT_FILTERS.map((defaultFilter, index) => {
-    const rawFilter = rawFilters[index] || {};
-    return sanitizeFilter(rawFilter, defaultFilter);
-  });
+  // The band count follows the preset rather than the current defaults; the
+  // popup, the graph and the filter chain are all count-agnostic.
+  const count = Math.min(rawFilters.length, MAX_FILTERS);
+  const eqFilters = [];
+  for (let index = 0; index < count; index += 1) {
+    eqFilters.push(
+      sanitizeFilter(rawFilters[index] || {}, fallbackFilterFor(index, count))
+    );
+  }
 
   return {
     eqFilters,
@@ -558,9 +615,17 @@ async function handleCommand(message, senderTabId) {
 
     case 'importPresets': {
       const imported = normalizeImportedPresets(message.presets);
+      const count = Object.keys(imported).length;
+
       workspace.presets = { ...workspace.presets, ...imported };
       await persistPresets();
       broadcast({ type: 'sendPresets', presets: workspace.presets });
+      broadcast({
+        type: 'sendEqNotice',
+        reason: count
+          ? `Imported ${count} preset${count === 1 ? '' : 's'}.`
+          : 'import-none'
+      });
       return;
     }
 
