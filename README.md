@@ -47,6 +47,8 @@ Web Audio в этом случае выдаёт тишину, поэтому Ear
 Временное дополнение живёт до перезапуска браузера. Для постоянной установки требуется подпись
 через [AMO](https://addons.mozilla.org/developers/).
 
+Требуется Firefox 128+ — на более старых версиях нет `world: "MAIN"` в `scripting.executeScript`.
+
 ## 🧭 Как пользоваться
 
 1. Откройте вкладку с аудио/видео.
@@ -69,12 +71,23 @@ Web Audio в этом случае выдаёт тишину, поэтому Ear
 - `storage` — пресеты (`storage.local`) и текущее состояние EQ (`storage.session`).
 - `tabs` — список активных вкладок и отслеживание их закрытия/навигации.
 - `downloads` — экспорт пресетов в файл.
+- `webRequest` / `webRequestBlocking` — добавление заголовка `Access-Control-Allow-Origin` к
+  медиазапросам, которые Ears сам перевёл в CORS-режим. Без этого сайты, отдающие звук с
+  отдельного домена (например `music.yandex.ru` → `*.storage.yandex.net`), эквализировать
+  невозможно: Web Audio выдаёт тишину. Firefox сохранил блокирующий `webRequest` в MV3, поэтому
+  такой обход здесь работает, в отличие от Chrome.
 
 ## 🏗️ Структура проекта
 
 - `manifest.json` — конфигурация расширения (MV3 для Gecko, event page).
 - `bg.js` — фоновый event page: состояние EQ, пресеты, маршрутизация сообщений.
-- `eq-content.js` — content script с графом Web Audio (фильтры, gain, анализатор).
+- `eq-page.js` — движок Web Audio (фильтры, gain, анализатор). Работает в контексте самой
+  страницы (`world: "MAIN"`), потому что только там можно перехватить
+  `HTMLMediaElement.prototype.play`. Это обязательно для плееров вроде Яндекс.Музыки, которые
+  играют через **detached** `new Audio()`: такой элемент не попадает в DOM, его не находит
+  `querySelectorAll`, не видит `MutationObserver`, и его события не всплывают до `document`.
+- `eq-content.js` — мост между `bg.js` и `eq-page.js` (у страничного контекста нет доступа к
+  `browser.*`, поэтому команды идут через `window.postMessage`).
 - `popup.html`, `popup.css`, `popup.js` — UI и логика всплывающего окна.
 - `snap.svg-min.js` — библиотека для работы с SVG в UI.
 - `ears*.png`, `earstile*.*` — иконки и графические ассеты.
@@ -88,9 +101,14 @@ Web Audio в этом случае выдаёт тишину, поэтому Ear
 ```bash
 python -m json.tool manifest.json >/dev/null
 node --check bg.js
+node --check eq-page.js
 node --check eq-content.js
 node --check popup.js
 ```
+
+Логи расширения разделены по контекстам: сообщения из `eq-page.js` и `eq-content.js` видны в
+обычной консоли вкладки (F12), а из `bg.js` — только в инспекторе фонового скрипта
+(`about:debugging` → **Inspect** рядом с Ears).
 
 Логи фонового скрипта: `about:debugging#/runtime/this-firefox` → **Inspect** рядом с Ears.
 

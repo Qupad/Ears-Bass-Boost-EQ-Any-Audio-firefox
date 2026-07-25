@@ -18,12 +18,12 @@
 }
 
 #mainDiv label {
-	background: #2C3E50;
-	border-color: wheat;
+	background: #101010;
+	border-color: #e6e6e6;
 	border-style: solid;
 	border-width: 1px;
 	border-radius: .5em .5em 0 0;
-	color: wheat;
+	color: #e6e6e6;
 	cursor: pointer;
 	display: block;
 	float: left;
@@ -40,12 +40,12 @@
 }
 
 #mainDiv input:hover + label {
-	background: #756A56;
+	background: #333333;
 }
 
 #mainDiv input:checked + label {
-	background-color: wheat;
-	color: #2C3E50;
+	background-color: #e6e6e6;
+	color: #101010;
 	position: relative;
 	z-index: 6;
 	-webkit-transition: .1s;
@@ -59,7 +59,7 @@
 	z-index: -100;
 	transition: all linear 0.1s;
 	height: 305px;
-	width: 635px;
+	width: 630px;
 	position: absolute;
 }
 
@@ -113,8 +113,13 @@ input.visible {
   visibility: visible !important;
 }
 
+#eqDiv {
+	display: flex;
+	align-items: flex-start;
+}
+
 #eqSvg, #gainSvg {
-	display: inline;
+	display: block;
 }
 
 #eqTabList {
@@ -142,7 +147,7 @@ input.visible {
 }
 
 #eqTabList span, #infoDiv {
-    color : wheat;
+    color : #e6e6e6;
     margin-left : 5px;
 }
 
@@ -162,14 +167,17 @@ input.visible {
 }
 
 body {
-    background-color : #2C3E50;
+    box-sizing : border-box;
+    margin : 0 auto;
+    padding : 0 5px;
+    width : 640px;
+    background-color : #101010;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     -khtml-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
-    min-width : 640px;
 }
 
 html {
@@ -177,22 +185,22 @@ html {
 }
 
 h1,h2,h3 {
-    color : wheat;
+    color : #e6e6e6;
 }
 
 #pl {
-    color : wheat;
+    color : #e6e6e6;
     outline : none;
     display : none;
     font-size : 14px;
 }
 
 #presetNameInput, button {
-    background-color : #2C3E50;
-    color : wheat;
+    background-color : #101010;
+    color : #e6e6e6;
     outline : none;
     border-width : 1px;
-    border-color : wheat;
+    border-color : #e6e6e6;
     border-style : solid;
 	border-radius: 2px;
 }
@@ -207,7 +215,7 @@ h1,h2,h3 {
 }
 
 em, a, body {
-    color : wheat;
+    color : #e6e6e6;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     -khtml-user-select: none;
@@ -223,10 +231,10 @@ em, a, body {
 }
 
 a.button {
-    background-color : #2C3E50;
+    background-color : #101010;
     border-width : 1px;
-	color: wheat;
-    border-color : wheat;
+	color: #e6e6e6;
+    border-color : #e6e6e6;
     border-style : solid;
 	padding: 3px;
 
@@ -280,8 +288,8 @@ button :focus {
 
 #eqOptionsDiv {
 	position: absolute;
-	top: 21;
-	left: -16;
+	top: 21px;
+	left: -16px;
 }
 
 #vizButton {
@@ -294,11 +302,11 @@ button :focus {
 }
 
 #vizButton.on {
-    background-color : wheat;
-    color : #2C3E50;
+    background-color : #e6e6e6;
+    color : #101010;
     outline : none;
     border-width : 1px;
-    border-color : wheat;
+    border-color : #e6e6e6;
     border-style : solid;
 }
 

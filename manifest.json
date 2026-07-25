@@ -8,7 +8,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "ears-audio-toolkit@qupad.github.io",
-      "strict_min_version": "115.0"
+      "strict_min_version": "128.0"
     }
   },
   "icons": {
@@ -27,7 +27,9 @@
     "downloads",
     "scripting",
     "storage",
-    "tabs"
+    "tabs",
+    "webRequest",
+    "webRequestBlocking"
   ],
   "host_permissions": [
     "<all_urls>"
