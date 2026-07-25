@@ -5,6 +5,7 @@
 // store, and the message routing between the popup and those content scripts.
 
 const CONTENT_SCRIPT = 'eq-content.js';
+const PAGE_SCRIPT = 'eq-page.js';
 
 const DEFAULT_FILTERS = [
   { type: 'lowshelf', frequency: 60, q: 0.7, gain: 0 },
@@ -191,6 +192,14 @@ function findStream(tabId) {
 }
 
 async function injectContentScript(tabId) {
+  // Order matters: the page-world engine has to exist before the bridge
+  // starts sending it commands.
+  await browser.scripting.executeScript({
+    target: { tabId, allFrames: true },
+    files: [PAGE_SCRIPT],
+    world: 'MAIN'
+  });
+
   const results = await browser.scripting.executeScript({
     target: { tabId, allFrames: true },
     files: [CONTENT_SCRIPT]
@@ -328,6 +337,52 @@ async function handleGetFFT(senderTabId) {
 
   return { fft: [] };
 }
+
+// --- cross-origin media shim -------------------------------------------
+// A MediaElementAudioSourceNode fed by CORS-cross-origin media outputs
+// silence, which is why sites that stream from a separate CDN host
+// (music.yandex.ru -> *.storage.yandex.net, for example) cannot be
+// equalized. The content script re-requests such media in CORS mode; this
+// listener makes those responses acceptable. Firefox still supports
+// blocking webRequest under MV3, so this works where Chrome could not.
+// Only requests the content script opted into CORS mode carry an Origin
+// header, so tracking those request ids is both a precise filter and one
+// that needs no restored state -- a media request can wake this event page,
+// and anything read from storage would not be back yet.
+const corsMediaRequests = new Set();
+
+browser.webRequest.onBeforeSendHeaders.addListener(
+  (details) => {
+    if (details.requestHeaders.some((header) => header.name.toLowerCase() === 'origin')) {
+      corsMediaRequests.add(details.requestId);
+    }
+  },
+  { urls: ['<all_urls>'], types: ['media'] },
+  ['requestHeaders']
+);
+
+browser.webRequest.onHeadersReceived.addListener(
+  (details) => {
+    if (!corsMediaRequests.delete(details.requestId)) {
+      return undefined;
+    }
+
+    const responseHeaders = details.responseHeaders.filter(
+      (header) => !/^access-control-allow-(origin|credentials)$/i.test(header.name)
+    );
+    responseHeaders.push({ name: 'Access-Control-Allow-Origin', value: '*' });
+
+    return { responseHeaders };
+  },
+  { urls: ['<all_urls>'], types: ['media'] },
+  ['blocking', 'responseHeaders']
+);
+
+// Aborted requests never reach onHeadersReceived.
+browser.webRequest.onErrorOccurred.addListener(
+  (details) => corsMediaRequests.delete(details.requestId),
+  { urls: ['<all_urls>'], types: ['media'] }
+);
 
 // --- lifecycle ---------------------------------------------------------
 
